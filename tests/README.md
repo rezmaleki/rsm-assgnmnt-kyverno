@@ -19,7 +19,7 @@ Install Git to clone the repository or reference the raw files directly.
 
 You can run Kyverno tests directly using the raw URL of the test file:
 ```bash
-kyverno test kyverno test https://github.com/rezmaleki/rsm-assgnmnt-kyverno.git
+ kyverno test https://github.com/rezmaleki/rsm-assgnmnt-kyverno.git
 ```
 ### 3. Running Tests Locally
 
