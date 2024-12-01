@@ -1,0 +1,36 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: enforce-zone-spread
+policies:
+  - ../policy.yaml
+resources:
+  - resources/podwithantiaffinity.yaml
+  - resources/podwithouttopology.yaml
+  - resources/podwithincorrecttopology.yaml
+  - resources/podindefaultnamespace.yaml
+results:
+  - policy: enforce-zone-spread
+    rule: add-topology-spread-constraints
+    resource: podwithouttopology
+    kind: Pod
+    result: pass
+
+  - policy: enforce-zone-spread
+    rule: validate-existing-spread
+    resource: podwithincorrecttopology
+    kind: Pod
+    result: fail
+
+  
+  - policy: enforce-zone-spread
+    rule: audit-pods-with-anti-affinity-or-node-selector
+    resource: podwithantiaffinity
+    kind: Pod
+    result: fail
+
+  - policy: enforce-zone-spread
+    rule: add-topology-spread-constraints
+    resource: podindefaultnamespace
+    kind: Pod
+    result: skip

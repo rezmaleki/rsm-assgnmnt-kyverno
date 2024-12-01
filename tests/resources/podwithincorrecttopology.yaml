@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: podwithincorrecttopology 
+  namespace: test
+spec:
+  topologySpreadConstraints:
+    - maxSkew: 2
+      topologyKey: kubernetes.io/zone
+      whenUnsatisfiable: ScheduleAnyway
+  containers:
+    - name: nginx
+      image: nginx

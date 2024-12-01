@@ -1,0 +1,78 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: enforce-zone-spread
+spec:
+  validationFailureAction: Audit # Log violations but do not deny resource creation
+  background: true # Audit existing resources
+  rules:
+    # 1. Add topologySpreadConstraints if none exist
+    - name: add-topology-spread-constraints
+      match:
+        resources:
+          kinds:
+            - Pod
+      preconditions:
+        all:
+          - key: "{{ request.object.spec.topologySpreadConstraints || `[]` | length(@) }}"
+            operator: Equals
+            value: 0
+          - key: "{{ request.object.metadata.namespace }}"
+            operator: NotIn
+            value:
+            - kube-system
+            - kube-public
+            - default # Exclude system-critical and static pods
+      mutate:
+        patchStrategicMerge:
+          spec:
+            topologySpreadConstraints:
+              - maxSkew: 1
+                topologyKey: topology.kubernetes.io/zone
+                whenUnsatisfiable: DoNotSchedule
+
+    # 2. Validate existing topologySpreadConstraints and deny if incorrect
+    - name: validate-existing-spread
+      match:
+        resources:
+          kinds:
+            - Pod
+      preconditions:
+        all:
+          - key: "{{ request.object.spec.topologySpreadConstraints }}"
+            operator: NotEquals
+            value: 0 # Check only if constraints exist
+      validate:
+        message: "Existing topologySpreadConstraints must conform to zone balancing requirements."
+        deny:
+          conditions:
+            any:
+              - key: "{{ request.object.spec.topologySpreadConstraints }}"
+                operator: NotEquals
+                value:
+                  - maxSkew: 1
+                    topologyKey: topology.kubernetes.io/zone
+                    whenUnsatisfiable: DoNotSchedule
+              - key: "{{ request.object.metadata.namespace }}"
+                operator: NotIn
+                value:
+                  - kube-system
+                  - kube-public # Exclude critical system namespaces    
+
+    # 3. Audit Pods with Anti-Affinity or Node Selector
+    - name: audit-pods-with-anti-affinity-or-node-selector
+      match:
+        resources:
+          kinds:
+            - Pod
+      preconditions:
+        any:
+          - key: "{{ request.object.spec.affinity.podAntiAffinity || `[]` | length(@) }}"
+            operator: GreaterThan
+            value: 0 # Audit Pods with Anti-Affinity
+          - key: "{{ request.object.spec.nodeSelector || `[]` | length(@) }}"
+            operator: GreaterThan
+            value: 0 # Audit Pods with Node Selector
+      validate:
+        message: "Pod includes Anti-Affinity or Node Selector, requiring review."
+        deny: {}
