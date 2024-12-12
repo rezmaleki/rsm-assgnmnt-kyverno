@@ -23,6 +23,11 @@ spec:
             - kube-system
             - kube-public
             - default # Exclude system-critical and static pods
+          - key: "{{ request.object.metadata.ownerReferences[0].kind }}"
+            operator: NotIn
+            value:
+            - StatefulSet
+            - DaemonSet 
       mutate:
         patchStrategicMerge:
           spec:
