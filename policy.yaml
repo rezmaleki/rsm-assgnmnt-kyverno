@@ -12,22 +12,22 @@ spec:
         resources:
           kinds:
             - Pod
+      exclude:
+        resources:
+          kinds:
+            - StatefulSet
+            - DaemonSet
       preconditions:
         all:
-          - key: "{{ request.object.spec.topologySpreadConstraints || `[]` | length(@) }}"
-            operator: Equals
-            value: 0
           - key: "{{ request.object.metadata.namespace }}"
             operator: NotIn
             value:
-            - kube-system
-            - kube-public
-            - default # Exclude system-critical and static pods
-          - key: "{{ request.object.metadata.ownerReferences[0].kind }}"
-            operator: NotIn
-            value:
-            - StatefulSet
-            - DaemonSet 
+              - default
+              - kube-system
+              - kube-public
+          - key: "{{ request.object.spec.topologySpreadConstraints || `[]` | length(@) }}"
+            operator: Equals
+            value: 0
       mutate:
         patchStrategicMerge:
           spec:
